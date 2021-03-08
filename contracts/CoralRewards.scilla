@@ -1,0 +1,157 @@
+scilla_version 0
+
+(* CoralRewards Contract *)
+(* This contract implements transitions for rewarding CRLs *)
+
+(* @note: Only registered members can be rewarded with CRL. *)
+
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+library CoralRewards
+
+let one_msg =
+  fun (msg: Message) =>
+  let nil_msg = Nil {Message} in
+  Cons {Message} msg nil_msg
+
+(* error codes library *)
+let code_reward_success = Uint32 0
+let code_member_not_found = Uint32 1
+let code_not_authorized = Uint32 2
+let code_invalid_reward = Uint32 3
+let member_exists_code = Uint32 4
+let zero = Uint128 0
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+(* *)
+contract CoralRewards
+(
+    owner: ByStr20,
+    crl_token_address: ByStr20
+)
+
+
+field rewards_count : Map ByStr20 Uint128 = Emp ByStr20 Uint128
+field max_reward : Uint128 = Uint128 100 
+
+
+
+(* ======== transitions ===============*)
+
+
+transition addMember(addr: ByStr20)
+    (* Access control: Checking if sender is the owner of the Contract *)
+    is_authorized = builtin eq _sender owner;
+    match is_authorized with
+    | True => 
+        member_exists <- exists rewards_count[addr];
+        match member_exists with
+            | True =>
+                msg = {_tag: ""; _recipient: _sender; _amount: zero; code: member_exists_code};
+                msgs = one_msg msg;
+                send msgs
+            | False =>
+                rewards_count[addr] := zero;
+                e = {_eventname : "register_member";
+                    addr: addr};
+                event e
+         end
+        
+
+    | False =>
+        (* Unauthorized transaction *)
+        msg = {_tag: "";
+                _recipient: _sender;
+                _amount: Uint128 0;
+                code: code_not_authorized};
+        msgs = one_msg msg;
+        send msgs
+    end
+end
+
+
+transition setMaxReward(max: Uint128)
+(* statements go below *)
+    (* Access control: Checking if sender is the owner of the Contract *)
+    is_authorized = builtin eq _sender owner;
+    match is_authorized with
+    | True => 
+        max_reward := max;
+        e = {_eventname : "update_max_reward";
+        max_reward: max};
+        event e
+    | False =>
+        (* Unauthorized transaction *)
+        msg = {_tag: "";
+                _recipient: _sender;
+                _amount: Uint128 0;
+                code: code_not_authorized};
+        msgs = one_msg msg;
+        send msgs
+    end
+end
+
+transition rewardMember(to: ByStr20, amount: Uint128)
+(* statements go below *)
+    (* Access control: Checking if sender is the owner of the Contract *)
+    is_authorized = builtin eq _sender owner;
+    match is_authorized with
+    | True => 
+        rwrd <- max_reward;
+        valid_amount = builtin lt amount rwrd;
+        match valid_amount with
+            | True =>
+            (*check if member exists*)
+                member_exists <- exists rewards_count[to];
+                match member_exists with
+                    | True =>
+                        (* send reward*)
+                        msg = { _tag : "TransferFrom"; _recipient : crl_token_address;
+                                _amount : Uint128 0;
+                                from: owner;
+                                to : to;
+                                amount: amount };
+                        msgs = one_msg msg;
+                        send msgs;
+                        e = {_eventname : "reward_sent";
+                        to: to;
+                        reward: amount};
+                        event e
+                    | False =>
+                        msg = {_tag: "";
+                                _recipient: _sender;
+                                _amount: Uint128 0;
+                                code: code_member_not_found};
+                        msgs = one_msg msg;
+                        send msgs
+                end
+            | False =>
+             (*statements for False*)
+                msg = {_tag: "";
+                        _recipient: _sender;
+                        _amount: Uint128 0;
+                        code: code_invalid_reward};
+                msgs = one_msg msg;
+                send msgs
+        end
+        
+    | False =>
+        msg = {_tag: "";
+            _recipient: _sender;
+            _amount: Uint128 0;
+            code: code_not_authorized};
+        msgs = one_msg msg;
+        send msgs
+    end
+
+end
+
+
+transition AddFunds()
+  accept
+end
