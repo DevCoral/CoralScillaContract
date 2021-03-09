@@ -32,12 +32,13 @@ let zero = Uint128 0
 contract CoralRewards
 (
     owner: ByStr20,
-    crl_token_address: ByStr20
+    crl_token_address: ByStr20,
+    crl_decimals: Uint32
 )
 
 
 field rewards_count : Map ByStr20 Uint128 = Emp ByStr20 Uint128
-field max_reward : Uint128 = Uint128 100 
+field max_reward : Uint128 = Uint128 100
 
 
 
@@ -111,11 +112,14 @@ transition rewardMember(to: ByStr20, amount: Uint128)
                 match member_exists with
                     | True =>
                         (* send reward*)
+                        base = Uint128 10;
+                        pow_dec = builtin pow base crl_decimals;
+                        adjusted_amount = builtin mul pow_dec amount;
                         msg = { _tag : "TransferFrom"; _recipient : crl_token_address;
                                 _amount : Uint128 0;
                                 from: owner;
                                 to : to;
-                                amount: amount };
+                                amount: adjusted_amount };
                         msgs = one_msg msg;
                         send msgs;
                         
