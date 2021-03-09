@@ -151,6 +151,11 @@ transition rewardMember(to: ByStr20, amount: Uint128)
 
 end
 
+(* Placeholder transition to support TransferFrom *)
+transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  accept
+end
+
 
 transition AddFunds()
   accept
