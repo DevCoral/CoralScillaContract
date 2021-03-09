@@ -74,7 +74,7 @@ transition addMember(addr: ByStr20)
     end
 end
 
-
+(* set max reward per transaction*)
 transition setMaxReward(max: Uint128)
 (* statements go below *)
     (* Access control: Checking if sender is the owner of the Contract *)
@@ -118,6 +118,15 @@ transition rewardMember(to: ByStr20, amount: Uint128)
                                 amount: amount };
                         msgs = one_msg msg;
                         send msgs;
+                        
+                        option_prev_count <- rewards_count[to];
+                        new_count = match option_prev_count with
+                          | Some pcount => builtin add amount pcount
+                          | None => amount
+                          (* Prev highest bidder has no pending returns. *)
+                        end;
+                        rewards_count[to] := new_count;
+                        
                         e = {_eventname : "reward_sent";
                         to: to;
                         reward: amount};
