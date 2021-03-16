@@ -31,12 +31,12 @@ let zero = Uint128 0
 (* *)
 contract CoralRewards
 (
-    owner: ByStr20,
+    initial_owner : ByStr20,
     crl_token_address: ByStr20,
     crl_decimals: Uint32
 )
 
-
+field owner : ByStr20 = initial_owner
 field rewards_count : Map ByStr20 Uint128 = Emp ByStr20 Uint128
 field max_reward : Uint128 = Uint128 100
 
@@ -47,7 +47,8 @@ field max_reward : Uint128 = Uint128 100
 
 transition addMember(addr: ByStr20)
     (* Access control: Checking if sender is the owner of the Contract *)
-    is_authorized = builtin eq _sender owner;
+    lowner <- owner;
+    is_authorized = builtin eq _sender lowner;
     match is_authorized with
     | True => 
         member_exists <- exists rewards_count[addr];
@@ -79,7 +80,8 @@ end
 transition setMaxReward(max: Uint128)
 (* statements go below *)
     (* Access control: Checking if sender is the owner of the Contract *)
-    is_authorized = builtin eq _sender owner;
+    lowner <- owner;
+    is_authorized = builtin eq _sender lowner;    
     match is_authorized with
     | True => 
         max_reward := max;
@@ -100,7 +102,8 @@ end
 transition rewardMember(to: ByStr20, amount: Uint128)
 (* statements go below *)
     (* Access control: Checking if sender is the owner of the Contract *)
-    is_authorized = builtin eq _sender owner;
+    lowner <- owner;
+    is_authorized = builtin eq _sender lowner;
     match is_authorized with
     | True => 
         rwrd <- max_reward;
@@ -117,7 +120,7 @@ transition rewardMember(to: ByStr20, amount: Uint128)
                         adjusted_amount = builtin mul pow_dec amount;
                         msg = { _tag : "TransferFrom"; _recipient : crl_token_address;
                                 _amount : Uint128 0;
-                                from: owner;
+                                from: lowner;
                                 to : to;
                                 amount: adjusted_amount };
                         msgs = one_msg msg;
@@ -163,6 +166,24 @@ transition rewardMember(to: ByStr20, amount: Uint128)
     end
 
 end
+
+transition transferOwner(to : ByStr20)
+  (* continue executing the transition if _sender is the owner,
+     throw exception and abort otherwise *)
+  lowner <- owner;
+  is_authorized = builtin eq _sender lowner;
+  match is_authorized with
+    | True => owner := to
+    | False =>
+      msg = {_tag: "";
+          _recipient: _sender;
+          _amount: Uint128 0;
+          code: code_not_authorized};
+      msgs = one_msg msg;
+      send msgs
+    end
+end
+
 
 (* Placeholder transition to support TransferFrom *)
 transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
