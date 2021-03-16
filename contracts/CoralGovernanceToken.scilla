@@ -4,7 +4,7 @@ scilla_version 0
 (*               Associated library                *)
 (***************************************************)
 import IntUtils
-library FungibleToken
+library CoralGovernanceToken
 
 let one_msg = 
   fun (msg : Message) => 
@@ -51,7 +51,7 @@ let get_val =
 (*             The contract definition             *)
 (***************************************************)
 
-contract FungibleToken
+contract CoralGovernanceToken
 (
   contract_owner: ByStr20,
   name : String,
